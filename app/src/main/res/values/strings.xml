@@ -1,0 +1,47 @@
+<resources>
+    <string name="app_name">上传检查结果</string>
+    <string-array name="checkitems_1">
+        <item>点击以选择</item>
+
+        <item>血液检测</item>
+        <item>尿液检测</item>
+        <item>粪便检测</item>
+        <item>痰液检测</item>
+        <item>脑脊液检测</item>
+        <item>浆膜腔积液检测</item>
+        <item>生殖系统体液检测</item>
+        <item>骨髓检测</item>
+        <item>基因检测</item>
+
+        <item>X线检查</item>
+        <item>CT检查</item>
+        <item>超声检查</item>
+        <item>磁共振检查</item>
+        <item>内镜检查</item>
+        <item>心电图检查</item>
+        <item>肺功能检查</item>
+    </string-array>
+<string-array name="type_xml">
+    <item>0</item>
+
+    <item>Blood</item>
+    <item>Urine</item>
+    <item>Faeces</item>
+    <item>Sputum</item>
+    <item>CSF</item>
+    <item>SCE</item>
+    <item>HumorCheck</item>
+    <item>BMC</item>
+    <item>GeneDetection</item>
+
+    <item>XCheck</item>
+    <item>CTCheck</item>
+    <item>USCheck</item>
+    <item>MRICheck</item>
+    <item>StomachCheck</item>
+    <item>HeartCheck</item>
+    <item>LungCheck</item>
+
+
+</string-array>
+</resources>
