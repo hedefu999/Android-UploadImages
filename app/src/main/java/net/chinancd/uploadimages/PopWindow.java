@@ -8,7 +8,7 @@ import android.view.View;
 /**
  * 作者： 林思琴 时间： 16.2.16 - 15:04
  * 邮箱：hedefu999@163.com
- * 签名：单身狗求女友！
+ * 签名：面包会有的
  */
 public class PopWindow extends Activity implements View.OnClickListener {
     private static String TAG="PopWindow";
