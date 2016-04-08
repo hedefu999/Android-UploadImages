@@ -33,12 +33,14 @@ import android.widget.Toast;
 
 import org.ksoap2.serialization.SoapObject;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
@@ -75,27 +77,8 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        preferences=getSharedPreferences("launchtime",0);
-        upload = (Button) findViewById(R.id.btn_upload);
-        checkresult = (TextView) findViewById(R.id.checkresult);
-        uploadResult = (TextView) findViewById(R.id.tv_result);
-        spinner = (Spinner) findViewById(R.id.spinner);
-        preview = (ImageView) findViewById(R.id.preview);
-        guide=(ImageView)findViewById(R.id.iv_guide);
-        idnumber = (EditText) findViewById(R.id.id);
-        surface = (LinearLayout) findViewById(R.id.ll_surface);
-        adapter = ArrayAdapter.createFromResource(this, R.array.checkitems_1,
-                android.R.layout.simple_spinner_item);
-        type=getResources().getStringArray(R.array.type_xml);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinner.setAdapter(adapter);
-        spinner.setVisibility(View.VISIBLE);
         init();//检查网络,创建文件
-        //各种监听
-        preview.setOnClickListener(this);
-        surface.setOnClickListener(this);
-        guide.setOnClickListener(this);
-        upload.setOnClickListener(this);
+        //其他监听
         idnumber.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean hasFocus) {
@@ -132,6 +115,25 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
     }
 
     private void init(){
+        preferences=getSharedPreferences("launchtime",0);
+        upload = (Button) findViewById(R.id.btn_upload);
+        checkresult = (TextView) findViewById(R.id.checkresult);
+        uploadResult = (TextView) findViewById(R.id.tv_result);
+        spinner = (Spinner) findViewById(R.id.spinner);
+        preview = (ImageView) findViewById(R.id.preview);
+        guide=(ImageView)findViewById(R.id.iv_guide);
+        idnumber = (EditText) findViewById(R.id.id);
+        surface = (LinearLayout) findViewById(R.id.ll_surface);
+        adapter = ArrayAdapter.createFromResource(this, R.array.checkitems_1,
+                android.R.layout.simple_spinner_item);
+        type=getResources().getStringArray(R.array.type_xml);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(adapter);
+        spinner.setVisibility(View.VISIBLE);
+        preview.setOnClickListener(this);
+        surface.setOnClickListener(this);
+        guide.setOnClickListener(this);
+        upload.setOnClickListener(this);
         setGuide();
         //检查网络连接
         ConnectivityManager conManager =
@@ -194,27 +196,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
     }
     //根据图片的路径生成合适的缩略图,原理是根据原图片的长宽来确定压缩比例,设置的固定目标大小是宽度=800
     private void showPic(String imgpath){
-        BitmapFactory.Options options=new BitmapFactory.Options();
-        options.inJustDecodeBounds=true;
-        BitmapFactory.decodeFile(imgpath,options);
-        int originWidth=options.outWidth;
-        int originHeight=options.outHeight;
-        Log.e(TAG,"原始图片宽>>"+originWidth+"原始图片高度>>"+originHeight);
-        int ratio=originWidth/800;
-        Log.e(TAG,"设置图片缩放的比例是:"+ratio);
-        if(ratio==0){
-            options.inSampleSize=1;
-        }else {
-            options.inSampleSize=ratio;
-        }
-        options.inJustDecodeBounds=false;//不设置回false,生成的Bitmap=null
-        Bitmap compressedBitmap;
-        try {
-            compressedBitmap=BitmapFactory.decodeFile(imgpath,options);
-        }catch (OutOfMemoryError error){
-            options.inSampleSize=ratio+1;
-            compressedBitmap=BitmapFactory.decodeFile(imgpath,options);
-        }
+        Bitmap compressedBitmap=ImageUtils.compressByPixels(imgpath,800);
         preview.setImageBitmap(compressedBitmap);
         upload.setText("上传照片");
         btnAction=2;
@@ -249,6 +231,15 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
             }
 
         }
+        return uploadBuffer;
+    }
+
+    private String decodeImage(String filepath,int targetSize){
+        ByteArrayOutputStream baos=new ByteArrayOutputStream();
+        Bitmap compressedBitmap=ImageUtils.compressBySize(filepath,targetSize);
+        compressedBitmap.compress(Bitmap.CompressFormat.JPEG,100,baos);
+        String uploadBuffer=null;
+        uploadBuffer=Base64.encodeToString(baos.toByteArray(),Base64.DEFAULT);
         return uploadBuffer;
     }
 
@@ -378,11 +369,13 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
                     startActivityForResult(intent, 10);
                 }else if(btnAction==2){
                     params = new HashMap<String, String>();
-                    params.put("ProImage", decodeFile(uploadedFile));
+                    //params.put("ProImage", decodeFile(uploadedFile));//1.原图上传
+                    params.put("ProImage", decodeImage(uploadedFile,2048));//限制最大2MB
                     params.put("ProName", getTimeStamp()+".jpg");
                     params.put("id_card_number",idNo);
                     params.put("type",item);
                     accessWebService(url, nameSpace, methodName, params);
+                    btnAction=1;
                 }else {
                     Toast.makeText(getApplicationContext(),"您没有填写完整的信息",Toast.LENGTH_SHORT)
                             .show();
