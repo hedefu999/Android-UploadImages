@@ -1,14 +1,17 @@
 package net.chinancd.uploadimages;
 
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.util.Log;
 
+import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 
 /**
@@ -18,33 +21,27 @@ public class ImageUtils {
     private static final String TAG="ImageUtils";
 
     /**
-     * 根据给定的文件路径和要压缩到的像素值进行压缩图片
+     * 根据给定的文件路径和目标图片像素值进行压缩
      * @param filepath 文件路径
-     * @param pixels 目的图片的宽度,并不是严格的数值,甚至是相差很大
+     * @param maxside 目标图片的最大边
      * @return 压缩得到的bitmap
      */
-    public static Bitmap compressByPixels(String filepath,int pixels){
+    public static Bitmap compressByPixels(String filepath,int maxside){
         BitmapFactory.Options options=new BitmapFactory.Options();
         options.inJustDecodeBounds=true;
         BitmapFactory.decodeFile(filepath,options);
         int originWidth=options.outWidth;
         int originHeight=options.outHeight;
         Log.e(TAG,"原始图片宽>>"+originWidth+"原始图片高度>>"+originHeight);
-        int ratio=originWidth/pixels;
-        Log.e(TAG,"设置图片缩放的比例是:"+ratio);
-        if(ratio==0){
-            options.inSampleSize=1;
-        }else {
-            options.inSampleSize=ratio;
-        }
-        options.inJustDecodeBounds=false;//不设置回false,生成的Bitmap=null
-        Bitmap compressedBitmap;
-        try {
-            compressedBitmap=BitmapFactory.decodeFile(filepath,options);
-        }catch (OutOfMemoryError error){
-            options.inSampleSize=ratio+1;
-            compressedBitmap=BitmapFactory.decodeFile(filepath,options);
-        }
+        float ratio;
+        ratio=originHeight>originWidth?(float)maxside/originHeight:(float)maxside/originHeight;
+        Log.e(TAG,"compressByPixels>>获得的缩放比例="+ratio);
+        Matrix matrix=new Matrix();
+        matrix.postScale(ratio,ratio);
+        Bitmap originBitmap=BitmapFactory.decodeFile(filepath);//貌似发生了oom
+        Bitmap compressedBitmap=null;
+        compressedBitmap=originBitmap
+                .createBitmap(originBitmap,0,0,originWidth,originHeight,matrix,true);
         return compressedBitmap;
     }
 
@@ -54,32 +51,73 @@ public class ImageUtils {
      * @param targetSize 目标文件大小,结果不一定精确,单位是KB
      * @return 压缩得到的
      */
+    //该方法易造成OOM,费力不讨好
     public static Bitmap compressBySize(String filepath,int targetSize){
         File file=new File(filepath);
         long sourceSize=0;
+        //下面获取文件大小
+        FileInputStream fis=null;
         try {
-            FileInputStream fis=new FileInputStream(file);
+            fis=new FileInputStream(file);
             sourceSize=fis.available()/1024;//以KB为单位
-            Log.e(TAG,">>file size="+sourceSize);
+            Log.e(TAG,"compressBySize>>file size="+sourceSize);
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
+        }finally {
+            try {
+                fis.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
-        Bitmap originBitmap=BitmapFactory.decodeFile(filepath);
+        Bitmap originBitmap=BitmapFactory.decodeFile(filepath);//貌似发生了oom
         Bitmap compressedBitmap=null;
         if((int)sourceSize>targetSize){
-            double areaRatio=sourceSize/targetSize;
+            double areaRatio=(double) targetSize/sourceSize;//areaRatio<1
             float sizeRatio=(float) Math.sqrt(areaRatio);
             Matrix matrix=new Matrix();
             matrix.postScale(sizeRatio,sizeRatio);
+            Log.e(TAG,"compressBySize>>ratio of compress:sizeRatio>>"+sizeRatio+",areaRatio>>"+areaRatio);
             compressedBitmap=Bitmap.createBitmap(originBitmap,0,0,
                     originBitmap.getWidth(),originBitmap.getHeight(),matrix,true);
-            originBitmap.recycle();
-            originBitmap=null;
+            if(originBitmap!=null){
+                originBitmap.recycle();
+                originBitmap=null;
+            }
             return compressedBitmap;
         }else{
             return originBitmap;
         }
+    }
+
+    public static File compressByQualityAndSave(String filename, String targetfolder, int quallity){
+        Bitmap originbitmap=BitmapFactory.decodeFile(filename);
+        File compressedfile=FileUtils.renameFile(filename,targetfolder);
+        FileOutputStream fos= null;
+        BufferedOutputStream bos=null;
+        try {
+            fos = new FileOutputStream(compressedfile);
+            bos=new BufferedOutputStream(fos);
+            originbitmap.compress(Bitmap.CompressFormat.JPEG,quallity,bos);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }finally {
+            if(originbitmap!=null){
+                originbitmap.recycle();
+                originbitmap=null;
+                System.gc();
+            }
+            try {
+                bos.flush();
+                fos.flush();
+                bos.close();
+                fos.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return compressedfile;
     }
 }
