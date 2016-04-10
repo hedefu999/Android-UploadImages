@@ -1,91 +1,138 @@
 <?xml version="1.0" encoding="utf-8"?>
-    <FrameLayout
-        xmlns:android="http://schemas.android.com/apk/res/android"
-        android:id="@+id/maincontainer"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ImageView
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
-        <LinearLayout
-            android:id="@+id/ll_surface"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:orientation="vertical"
-            android:paddingLeft="@dimen/activity_horizontal_margin"
-            android:paddingRight="@dimen/activity_horizontal_margin"
-            android:paddingTop="@dimen/activity_vertical_margin"
+        android:layout_height="match_parent"
+        android:alpha="0.2"
+        android:paddingTop="50dp"
+        android:src="@drawable/chocum" />
+
+    <LinearLayout
+        android:id="@+id/ll_surface"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:orientation="vertical"
+        android:paddingBottom="@dimen/activity_vertical_margin"
+        android:paddingLeft="@dimen/activity_horizontal_margin"
+        android:paddingRight="@dimen/activity_horizontal_margin"
+        android:paddingTop="@dimen/activity_vertical_margin">
+
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginLeft="20dp"
+            android:layout_marginRight="20dp"
+            android:background="@drawable/textview_bacground_big"
             android:paddingBottom="@dimen/activity_vertical_margin"
-            android:focusable="true"
-            android:focusableInTouchMode="true">
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp"
+            android:paddingTop="@dimen/activity_vertical_margin"
+            android:text="中康检测报告上传"
+            android:textColor="@color/black"
+            android:textSize="30sp" />
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="@dimen/activity_vertical_margin"
+            android:text="第一步:请输入18位身份证号\n"
+            android:textColor="@color/black"
+            android:textSize="20sp" />
 
-            <TextView
-                android:text="填写身份证号和检查项目后上传"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textSize="24sp"
-                android:layout_gravity="center_horizontal"/>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="-16dp"
+            android:orientation="horizontal">
 
-            <TextView
-                android:text="请输入身份证号,最后一位是X的不必输入"
-                android:layout_width="wrap_content"
+            <EditText
+                android:id="@+id/id"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"/>
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
-                <EditText
-                    android:id="@+id/id"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:inputType="number"
-                    android:layout_weight="9"
-                    />
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:text="(/X)"
-                    android:layout_weight="1"/>
-            </LinearLayout>
+                android:layout_weight="6"
+                android:hint="最后一位是X的不必输入"
+                android:inputType="number"
+                android:textColor="@color/black"
+                android:textSize="24sp"/>
 
             <TextView
-                android:id="@+id/checkresult"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                />
+                android:layout_weight="1"
+                android:text="/X"
+                android:textColor="@color/black"
+                android:textSize="20sp"/>
+        </LinearLayout>
 
-                <TextView
-                    android:text="请选择检查的项目"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" />
-                <Spinner
-                    android:id="@+id/spinner"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_alignParentRight="true"
-                    android:layout_alignParentEnd="true"/>
-
-
-            <Button
-                android:id="@+id/btn_upload"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="选择照片"
-                android:layout_gravity="center_horizontal"/>
-            <TextView
-                android:id="@+id/tv_result"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="上传结果"
-                android:layout_gravity="center"/>
-            <ImageView
-                android:id="@+id/preview"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"/>
+        <LinearLayout
+            android:id="@+id/realtimecheck"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
 
         </LinearLayout>
-        <ImageView
-            android:id="@+id/iv_guide"
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="@dimen/activity_vertical_margin"
+            android:text="第二步:请选择检查的项目"
+            android:textColor="@color/black"
+            android:textSize="20sp" />
+
+        <Spinner
+            android:id="@+id/spinner"
             android:layout_width="match_parent"
-            android:layout_height="match_parent" />
-    </FrameLayout>
+            android:layout_height="50dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginLeft="40dp"
+            android:layout_marginRight="40dp"
+            android:layout_marginTop="@dimen/activity_vertical_margin"
+            android:background="@drawable/bn_gray_selector" />
+
+        <FrameLayout
+            android:id="@+id/circleButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp">
+
+            <ImageView
+                android:id="@+id/waitanim"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:src="@drawable/uploadwaiting"
+                android:visibility="invisible" />
+
+            <ImageView
+                android:id="@+id/iv_upload"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:src="@drawable/btn_upload_selector" />
+
+            <TextView
+                android:id="@+id/currentStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="选择照片"
+                android:textColor="@color/black"
+                android:textSize="25sp" />
+        </FrameLayout>
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/iv_guide"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+</FrameLayout>

@@ -10,19 +10,31 @@ import android.net.ConnectivityManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Message;
 import android.provider.MediaStore;
+import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
+import android.text.Html;
+import android.text.method.LinkMovementMethod;
+import android.text.util.Linkify;
 import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.view.ViewGroup;
+import android.view.WindowManager;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemSelectedListener;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.LinearLayout.LayoutParams;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -35,6 +47,9 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.logging.LogRecord;
 
 public class MainActivity extends AppCompatActivity implements OnClickListener {
     private static String TAG = "MainActivity>>>>";
@@ -42,28 +57,34 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
     private static final String url = "http://222.192.61.8:8889/UploadImage.asmx";
     private static final String methodName = "FileUploadImage1";      //methods provided by webservice page
     public static final int CAPTURE = 1, GALLERY = 2;
-    private String checkORuploadResult = null;
+    private static final int ONCHECK = 1, ONUPLOAD = 2;
 
-    private Button upload;
     private Spinner spinner;
-    private TextView checkresult;
-    private TextView uploadResult;
-    private ImageView preview;
+    private TextView checkTextView;
+    private TextView currentStatus;
+    private ImageView checkingAnim;
     private ImageView guide;
+    private ImageView ivUpload;
+    private ImageView waitAnim;
     private EditText idnumber;
     private LinearLayout surface;
+    private LinearLayout realtimeCheck;
+    private FrameLayout circleButton;
+    private Animation animation;
 
     private String idNo = "";
     private String[] type;
     private String item = "0";
 
     private ArrayAdapter adapter;
-    private int btnAction = 0;//按钮状态码,据此设置按钮的行为
-    HashMap<String, String> params = null;//webservice里传递的参数集合
-    File folder;//本软件使用的文件夹
-    File picturefolder;//上传的图片存储位置
-    String uploadedFile;//最终要上传的图片的路径
-    SharedPreferences preferences;
+    private static int btnAction = 0;//按钮状态码,据此设置按钮的行为
+    private HashMap<String, String> params = null;//webservice里传递的参数集合
+    private File folder;//本软件使用的文件夹
+    private File picturefolder;//上传的图片存储位置
+    private String uploadedFile;//最终要上传的图片的路径
+    private Handler mHandler;
+    private SharedPreferences preferences;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -74,19 +95,17 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
         idnumber.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean hasFocus) {
-                Log.e(TAG, "id number focus changed");
                 if (!hasFocus) {
-                    InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
-                    imm.toggleSoftInput(0, InputMethodManager.HIDE_NOT_ALWAYS);
                     idNo = idnumber.getText().toString();
                     //检查是否输入了正确的18位身份证
                     if (idnumber.getText() != null) {
                         if (idNo.length() >= 17) {
+                            idNo = idNo.length() == 17 ? idNo + "X" : idNo;
                             preCheckID();
                         }
                     }
                 } else {
-                    Log.e(TAG, "程序刚启动或正在输入");
+                    //程序刚启动或正在输入
                 }
             }
         });
@@ -95,7 +114,6 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 clearInputFocus(idnumber);
                 item = type[position];
-                Log.e(TAG, "onItemSelected>>" + position);
             }
 
             @Override
@@ -104,28 +122,45 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
                 Log.e(TAG, "onNothingSelected");
             }
         });
+        mHandler = new Handler() {
+            @Override
+            public void handleMessage(Message msg) {
+                if (msg.what == 521) {
+                    currentStatus.setText("继续上传");
+                    btnAction=1;
+                }
+            }
+        };
     }
 
     private void init() {
         preferences = getSharedPreferences("launchtime", 0);
-        upload = (Button) findViewById(R.id.btn_upload);
-        checkresult = (TextView) findViewById(R.id.checkresult);
-        uploadResult = (TextView) findViewById(R.id.tv_result);
+        currentStatus = (TextView) findViewById(R.id.currentStatus);
         spinner = (Spinner) findViewById(R.id.spinner);
-        preview = (ImageView) findViewById(R.id.preview);
         guide = (ImageView) findViewById(R.id.iv_guide);
+        ivUpload = (ImageView) findViewById(R.id.iv_upload);
+        waitAnim = (ImageView) findViewById(R.id.waitanim);
         idnumber = (EditText) findViewById(R.id.id);
         surface = (LinearLayout) findViewById(R.id.ll_surface);
+        realtimeCheck = (LinearLayout) findViewById(R.id.realtimecheck);
+        circleButton = (FrameLayout) findViewById(R.id.circleButton);
+
+        animation = AnimationUtils.loadAnimation(this, R.anim.imgloading);
+        checkingAnim = new ImageView(this);
+        checkingAnim.setImageResource(R.drawable.imgloading);
+        checkingAnim.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        checkTextView = new TextView(this);
+        checkTextView.setTextSize(20);
+
         adapter = ArrayAdapter.createFromResource(this, R.array.checkitems_1,
                 android.R.layout.simple_spinner_item);
         type = getResources().getStringArray(R.array.type_xml);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinner.setAdapter(adapter);
         spinner.setVisibility(View.VISIBLE);
-        preview.setOnClickListener(this);
         surface.setOnClickListener(this);
         guide.setOnClickListener(this);
-        upload.setOnClickListener(this);
+        ivUpload.setOnClickListener(this);
         setGuide();
         //检查网络连接
         ConnectivityManager conManager =
@@ -177,68 +212,57 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
         }
     }
 
+    private void handleWaitAnim(boolean showORhide) {
+        if (showORhide) {
+            waitAnim.setAnimation(animation);
+            waitAnim.setVisibility(View.VISIBLE);
+        } else {
+            waitAnim.setAnimation(null);
+            waitAnim.setVisibility(View.INVISIBLE);
+        }
+    }
+
     //在此处预先查询身份证号的存在性
     private void preCheckID() {
-        checkresult.setText("查询中...");
+        //添加旋转图片
+        checkingAnim.setAnimation(animation);
+        realtimeCheck.removeAllViews();
+        realtimeCheck.addView(checkingAnim);
+        realtimeCheck.addView(checkTextView);
+        checkTextView.setText("查询中...");
         params = new HashMap<String, String>();
-        params.put("ProImage", "");
-        params.put("ProName", "");
+        params.put("ProImage", " ");
+        params.put("ProName", " ");
         params.put("id_card_number", idNo);
         params.put("type", "Blood");
-        accessWebService(url, nameSpace, methodName, params);
-        checkresult.setText(checkORuploadResult);
+        accessWebService(url, nameSpace, methodName, params, ONCHECK);
     }
 
     //根据图片的路径生成合适的缩略图,原理是根据原图片的长宽来确定压缩比例,设置的固定目标大小是宽度=600
     private void showPic(String imgpath) {
-        Bitmap compressedBitmap = ImageUtils.compressByPixels(imgpath, 600);
-        preview.setImageBitmap(compressedBitmap);
-        upload.setText("上传照片");
+        Bitmap compressedBitmap = ImageUtils.compressByPixels(imgpath, 512);
+        Bitmap roundBitmap = ImageUtils.getRoundBitmap(compressedBitmap, ivUpload.getWidth());
+        Log.e(TAG, "ivUpload的宽度=" + ivUpload.getWidth());
+        ivUpload.setImageBitmap(roundBitmap);
+        currentStatus.setText("点击以上传");
         btnAction = 2;
-        uploadResult.setText("点击按钮开始上传");
         //bitmap.recycle();imageview还在使用这个bitmap回收会出错
     }
 
     private String decodeImage(String filepath, int quality) {
         File processedJPEG = ImageUtils.compressByQualityAndSave(
-                filepath,picturefolder.getAbsolutePath(),quality);
+                filepath, picturefolder.getAbsolutePath(), quality);
         //向图库添加图片
-        MediaScannerConnection.scanFile(this,new String[]{processedJPEG.getAbsolutePath()},null,null);
-        return FileUtils.decodeFile2Base64(processedJPEG.getAbsolutePath());
-       /* String uploadBuffer = null;
-        ByteArrayOutputStream baos=null;
-        ByteArrayOutputStream partbaos=null;
-        InputStream is=null;
-        byte[] buffer = new byte[1024];
-        int count = 0;
-        try {
-            partbaos=new ByteArrayOutputStream();
-            baos = new ByteArrayOutputStream();
-
-            //这个100改成30图像的分辨率是不会有损失的,但是文件大小可以从2MB变成110KB
-            processedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
-            Log.e(TAG,"decodeImage>>baos的字节数"+baos.size());
-            *//*is=new ByteArrayInputStream(baos.toByteArray());
-            while ((count=is.read(buffer))!=-1){
-                partbaos.write(buffer,0,count);
-                Log.e(TAG,"decodeImage>>while循环内partbaos的字节数"+partbaos.size());
-            }
-            Log.e(TAG,"decodeImage>>while循环内partbaos的字节数"+partbaos.size());*//*
-            uploadBuffer = Base64.encodeToString(baos.toByteArray(), Base64.DEFAULT);
-        } catch (OutOfMemoryError error) {
-            Toast.makeText(this, "图片过大,请调低相机分辨率重新拍摄", Toast.LENGTH_LONG).show();
-        } finally {
-            try {
-                is.close();
-                baos.close();
-                partbaos.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }catch (NullPointerException e){
-                e.printStackTrace();
-            }
-        }
-        return uploadBuffer;*/
+        MediaScannerConnection.scanFile(this, new String[]{processedJPEG.getAbsolutePath()}, null, null);
+        String buffer = FileUtils.decodeFile2Base64(processedJPEG.getAbsolutePath(),
+                new FileUtils.FileUploadCallBack() {
+                    @Override
+                    public void callBack(int process) {
+                        //很可惜,该callback得到的并不是上传照片的进度,而是读取文件流的进度...
+                    }
+                });
+        //此时的buffer长度就已经是文件大小了
+        return buffer;
     }
 
     private boolean writeBase64ToSD(String imgData) {
@@ -268,7 +292,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        picturefolder= new File(folder, "UploadImages");
+        picturefolder = new File(folder, "UploadImages");
         picturefolder.mkdir();//new File下不能创建文件夹
         File picture;
         switch (requestCode) {
@@ -277,7 +301,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
                     case 1://开始拍照,先将照片保存到SD卡,可以使得图片不至于太小
                         Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
                         //uploadedFile初始化的第一种情况,指定位置
-                        uploadedFile = picturefolder + File.separator +item + getTimeStamp() + ".jpg";
+                        uploadedFile = picturefolder + File.separator + item + getTimeStamp() + ".jpg";
                         picture = new File(uploadedFile);
                         intent.putExtra(MediaStore.EXTRA_OUTPUT, Uri.fromFile(picture));
                         startActivityForResult(intent, CAPTURE);
@@ -324,7 +348,8 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
 
     //此处实现了Webservice的回调,该回调很优雅地实现了返回结果,设置UI界面的功能,无需开启新线程
     private void accessWebService(String url, String nameSpace,
-                                  String methodName, HashMap<String, String> params) {
+                                  String methodName, HashMap<String, String> params, final int tag) {
+
         WebServiceUtils.callWebservice(url, nameSpace, methodName,
                 params, new WebServiceUtils.WebServiceCallBack() {
                     @Override
@@ -334,11 +359,44 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
                             for (int i = 0; i < resultObj.getPropertyCount(); i++) {
                                 stringBuilder.append(resultObj.getProperty(i)).append("\r\n");
                             }
-                            checkORuploadResult = stringBuilder.toString();
-                            uploadResult.setText(checkORuploadResult);
+                            String result = stringBuilder.toString();
+                            switch (tag) {
+                                case ONCHECK:
+                                    if (result.indexOf("参数无效") != -1) {
+                                        checkTextView.setText("尊敬的客户,您好!");
+                                    } else {
+                                        checkTextView.setText(Html.fromHtml("<b>您需要登录</b>" +
+                                                "<a href=\"http:www.chinancd.net\">中国慢病网</a>" +
+                                                "<b>进行注册才可以使用本服务</b>"));
+                                        checkTextView.setMovementMethod(LinkMovementMethod.getInstance());
+                                        checkTextView.setAutoLinkMask(Linkify.ALL);
+                                    }
+                                    break;
+                                case ONUPLOAD:
+                                    if (result.indexOf("成功") != -1) {
+                                        currentStatus.setText("上传成功");
+                                    } else {
+                                        currentStatus.setText("上传失败");
+                                    }
+                                    handleWaitAnim(false);
+                                    new Timer().schedule(new TimerTask() {
+                                        @Override
+                                        public void run() {
+                                            Message msg = new Message();
+                                            msg.what = 521;
+                                            mHandler.sendMessage(msg);
+                                        }
+                                    }, 2000);
+                                    break;
+                            }
                         } else {
+                            currentStatus.setText("\t\t\t上传失败\n服务器无法连接");
+                            checkTextView.setText("服务器无法连接");
                             Log.e(TAG, "获取的resultObj为空");
+                            handleWaitAnim(false);
                         }
+                        checkingAnim.setAnimation(null);
+                        realtimeCheck.removeView(checkingAnim);
                     }
                 });
     }
@@ -346,39 +404,43 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
     @Override
     public void onClick(View v) {
         switch (v.getId()) {
-            case R.id.preview:
-                Intent intentView = new Intent(Intent.ACTION_VIEW);
-                intentView.setDataAndType(Uri.fromFile(new File(uploadedFile)), "image/*");
-                startActivity(intentView);
-                break;
             case R.id.iv_guide:
                 guide.setVisibility(View.INVISIBLE);
                 break;
             case R.id.ll_surface:
                 clearInputFocus(idnumber);
                 break;
-            case R.id.btn_upload:
-                if (!(idNo.equals("") || item.equals("0")) && btnAction != 2) {
+            case R.id.iv_upload:
+                if (!(idNo.equals("") || item.equals("0")) && btnAction != 2 && btnAction != 3) {
                     btnAction = 1;
                 }
                 clearInputFocus(idnumber);
-                if (btnAction == 1) {
-                    Intent intent = new Intent(MainActivity.this, PopWindow.class);
-                    startActivityForResult(intent, 10);
-                } else if (btnAction == 2) {
-                    params = new HashMap<String, String>();
-                    params.put("ProImage", decodeImage(uploadedFile, 30));
-                    params.put("ProName", getTimeStamp() + ".jpg");
-                    params.put("id_card_number", idNo);
-                    params.put("type", item);
-                    accessWebService(url, nameSpace, methodName, params);
-                    btnAction = 1;
-                } else {
-                    Toast.makeText(getApplicationContext(), "您没有填写完整的信息", Toast.LENGTH_SHORT)
-                            .show();
+                switch (btnAction) {
+                    case 0:
+                        Toast.makeText(getApplicationContext(),
+                                "您没有填写完整的信息", Toast.LENGTH_SHORT).show();
+                        break;
+                    case 1://choose
+                        Intent intent = new Intent(MainActivity.this, PopWindow.class);
+                        startActivityForResult(intent, 10);
+                        break;
+                    case 2://uploading
+                        params = new HashMap<String, String>();
+                        params.put("ProImage", decodeImage(uploadedFile, 30));
+                        params.put("ProName", getTimeStamp() + ".jpg");
+                        params.put("id_card_number", idNo);
+                        params.put("type", item);
+                        currentStatus.setText("上传中...");
+                        btnAction = 3;
+                        handleWaitAnim(true);
+                        accessWebService(url, nameSpace, methodName, params, ONUPLOAD);
+                        break;
+                    case 3://loading and click
+                        Intent intentView = new Intent(Intent.ACTION_VIEW);
+                        intentView.setDataAndType(Uri.fromFile(new File(uploadedFile)), "image/*");
+                        startActivity(intentView);
+                        break;
                 }
-                break;
-            case R.id.maincontainer:
                 break;
         }
     }

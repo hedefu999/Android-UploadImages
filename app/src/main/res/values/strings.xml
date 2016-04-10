@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">上传检查结果</string>
+    <string name="app_name">中康上传</string>
     <string-array name="checkitems_1">
         <item>点击以选择</item>
 

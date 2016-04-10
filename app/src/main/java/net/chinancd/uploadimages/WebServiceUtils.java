@@ -42,7 +42,6 @@ public class WebServiceUtils {
                 iterator.hasNext();){
                 Map.Entry<String,String> entry=iterator.next();
                 soapObject.addProperty(entry.getKey(),entry.getValue());
-                Log.e(TAG,"向soapObject添加参数");
             }
         }else{
             Log.e(TAG,"该方法无参数");
@@ -64,11 +63,11 @@ public class WebServiceUtils {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                Log.e(TAG,"线程开始进行");
+                Log.e(TAG,"文件上传开始进行");
                 SoapObject resObj=null;
                 try {
                     httpTransSE.call(soapAction, envelope);
-                    Log.e(TAG,"httpTransSE calling finished!");
+                    Log.e(TAG,"文件上传完成");
                     if (envelope.getResponse() != null) {
                         resObj = (SoapObject) envelope.bodyIn;
                     } else {
@@ -79,6 +78,7 @@ public class WebServiceUtils {
                 } catch (XmlPullParserException e) {
                     e.printStackTrace();
                 }finally {
+                    //只返回一条消息
                     solveAfterTransHandler.sendMessage(
                             solveAfterTransHandler.obtainMessage(1,resObj));
                 }
@@ -86,6 +86,6 @@ public class WebServiceUtils {
         }).start();
     }
     public interface WebServiceCallBack{
-        public void callBack(SoapObject resultObj);
+         void callBack(SoapObject resultObj);
     }
 }
